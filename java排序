@@ -42,3 +42,70 @@ public class Test {
         // ... toString 方法
     }
 }
+
+
+根据对象属性（价格、速度）进行排序，需要注意的是，排序有先后之分，不同的顺序会导致不同的结果
+
+public class Test {
+    public static void main(String[] args) {
+        List<Computer> list = new ArrayList<>();
+        list.add(new Computer("xiaomi",4000,6));
+        list.add(new Computer("sony",5000,4));
+        list.add(new Computer("dell",4000,5));
+        list.add(new Computer("mac",6000,8));
+        list.add(new Computer("micro",5000,6));
+        // 先以价格（升序）、后再速度（升序）
+   list.sort(Comparator.comparingInt(Computer::getPrice).thenComparingInt(Computer::getSpeed));
+        // 先以速度（降序）、后再价格（升序）
+     list.sort(Comparator.comparingInt(Computer::getSpeed).reversed().thenComparingInt(Computer::getPrice));
+        // 先以价格（降序）、后再速度（降序）
+        list.sort(Comparator.comparingInt(Computer::getPrice).thenComparingInt(Computer::getSpeed).reversed());
+        //多条件排序
+         Collections.sort(list, new Comparator<Computer>() {
+            @Override
+            public int compare(Computer o1, Computer o2) {
+                int flag;
+                /*//先按照价格排序(降序)*/
+                flag = o2.getPrice() - o1.getPrice();
+                if (flag == 0) {
+                    /*后再速度（降序）*/
+                    flag = o2.getSpeed() - o1.getSpeed();
+                }
+                return flag;
+            }
+        });
+        
+        System.out.println(list);
+    }
+
+    public static class Computer {
+        private String name;
+        private Integer price;
+        private Integer speed;
+
+        public Computer(String name, Integer price, Integer speed) {
+            this.name = name;
+            this.price = price;
+            this.speed = speed;
+        }
+
+        public Integer getPrice() {
+
+            return price;
+        }
+
+        public void setPrice(Integer price) {
+            this.price = price;
+        }
+
+        public Integer getSpeed() {
+            return speed;
+        }
+
+        public void setSpeed(Integer speed) {
+            this.speed = speed;
+        }
+
+        // ... toString 方法
+    }
+}
