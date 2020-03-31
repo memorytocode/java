@@ -1,0 +1,681 @@
+package commons;
+  2 
+  3 import com.alibaba.fastjson.JSONObject;
+  4 import org.apache.commons.beanutils.BeanUtilsBean;
+  5 import org.apache.commons.beanutils.PropertyUtilsBean;
+  6 import org.springframework.util.DigestUtils;
+  7 import org.springframework.util.StringUtils;
+  8 
+  9 import javax.servlet.http.HttpServletRequest;
+ 10 import java.io.*;
+ 11 import java.net.MalformedURLException;
+ 12 import java.net.URL;
+ 13 import java.net.URLDecoder;
+ 14 import java.security.SecureRandom;
+ 15 import java.sql.Timestamp;
+ 16 import java.text.ParseException;
+ 17 import java.text.SimpleDateFormat;
+ 18 import java.util.*;
+ 19 import java.util.concurrent.locks.Lock;
+ 20 import java.util.concurrent.locks.ReentrantLock;
+ 21 import java.util.regex.Matcher;
+ 22 import java.util.regex.Pattern;
+ 23 import java.util.stream.Stream;
+ 24 
+ 25 /**
+ 26  * 通用工具类.
+ 27  */
+ 28 public class CommonUtil {
+ 29     private static SecureRandom random = new SecureRandom();
+ 30 
+ 31     public static final Pattern MAIL_PATTERN = Pattern.compile("^([a-zA-Z0-9_\\-\\.]+)@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.)|(([a-zA-Z0-9\\-]+\\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\\]?)$");
+ 32 
+ 33     public static final Pattern MOBILE_PATTERN = Pattern.compile("^1[3|4|5|7|8][0-9]\\d{8}$");
+ 34 
+ 35     public static final Pattern NAME_PATTERN = Pattern.compile("^[\\u4E00-\\u9FBF][\\u4E00-\\u9FBF(.|·)]{0,13}[\\u4E00-\\u9FBF]$");
+ 36 
+ 37     public static final Pattern NICKNAME_PATTERN = Pattern.compile("^((?!\\d{5})[\\u4E00-\\u9FBF(.|·)|0-9A-Za-z_]){2,11}$");
+ 38 
+ 39     public static final Pattern PASSWORD_PATTERN = Pattern.compile("^[\\s\\S]{6,30}$");
+ 40 
+ 41     public static final Pattern CODE_PATTERN = Pattern.compile("^0\\d{2,4}$");
+ 42 
+ 43     public static final Pattern POSTCODE_PATTERN = Pattern.compile("^\\d{6}$");
+ 44 
+ 45     public static final Pattern ID_PATTERN = Pattern.compile("^\\d{6}(\\d{8}|\\d{11})[0-9a-zA-Z]$");
+ 46 
+ 47     public static final Pattern BANK_CARD_PATTERN = Pattern.compile("^\\d{16,30}$");
+ 48 
+ 49     /**
+ 50      * 生成6位随机数字, 用于手机短信验证码.
+ 51      *
+ 52      * @return 6位随机数字
+ 53      */
+ 54     public static int random() {
+ 55         int x = Math.abs(random.nextInt(899999));
+ 56 
+ 57         return x + 100000;
+ 58     }
+ 59 
+ 60     /**
+ 61      * 对url字符串进行编码.
+ 62      *
+ 63      * @param url 要编码的url字符串
+ 64      * @return 编码后的字符串
+ 65      */
+ 66     public static String urlEncoder(String url) {
+ 67         if (StringUtils.isEmpty(url)) {
+ 68             return null;
+ 69         }
+ 70         try {
+ 71             return java.net.URLEncoder.encode(url, "utf-8");
+ 72         } catch (UnsupportedEncodingException e) {
+ 73             e.printStackTrace();
+ 74         }
+ 75         return null;
+ 76     }
+ 77 
+ 78     /**
+ 79      * 对url字符串进行解码.
+ 80      *
+ 81      * @param url 要解码的url字符串
+ 82      * @return 解码后的字符串
+ 83      */
+ 84     public static String urlDecoder(String url) {
+ 85         if (StringUtils.isEmpty(url)) {
+ 86             return null;
+ 87         }
+ 88         try {
+ 89             return URLDecoder.decode(url, "UTF-8");
+ 90         } catch (UnsupportedEncodingException e) {
+ 91             e.printStackTrace();
+ 92         }
+ 93         return null;
+ 94     }
+ 95 
+ 96     /**
+ 97      * 验证字符串是不是邮箱.
+ 98      *
+ 99      * @param email 要验证的邮箱
+100      * @return 是否正确邮箱
+101      */
+102     public static boolean validateEmail(String email) {
+103         if (StringUtils.isEmpty(email)) {
+104             return false;
+105         }
+106         Matcher m = MAIL_PATTERN.matcher(email);
+107         return m.matches();
+108     }
+109 
+110     /**
+111      * 验证字符串是不是手机号.
+112      *
+113      * @param mobile 要验证的手机号
+114      * @return 是否正确手机号
+115      */
+116     public static boolean validateMobile(String mobile) {
+117         if (StringUtils.isEmpty(mobile)) {
+118             return false;
+119         }
+120         Matcher m = MOBILE_PATTERN.matcher(mobile);
+121         return m.matches();
+122     }
+123 
+124     /**
+125      * 验证身份证是否有效.
+126      *
+127      * @param idCardNumber 要验证的身份证
+128      * @return 是否正确身份证
+129      */
+130     public static boolean validateId(String idCardNumber) {
+131         if (StringUtils.isEmpty(idCardNumber)) {
+132             return false;
+133         }
+134         Matcher m = ID_PATTERN.matcher(idCardNumber);
+135         return m.matches() && IdCardUtils.validateCard(idCardNumber);
+136     }
+137 
+138     /**
+139      * 验证姓名是否有效.
+140      *
+141      * @param name 要验证的姓名
+142      * @return 是否正确姓名
+143      */
+144     public static boolean validateName(String name) {
+145         if (StringUtils.isEmpty(name) || name.replaceAll("[^.·]", "").length() > 1) {
+146             return false;
+147         }
+148         Matcher m = NAME_PATTERN.matcher(name);
+149         return m.matches();
+150     }
+151 
+152     /**
+153      * 验证昵称是否有效.
+154      *
+155      * @param nickname 要验证的昵称
+156      * @return 是否正确昵称
+157      */
+158     public static boolean validateNickname(String nickname) {
+159 
+160         //规则 不能包含5个数字 允许中英文和数字 2-11位
+161         if (StringUtils.isEmpty(nickname) || nickname.replaceAll("[^0-9]", "").length() > 4) {
+162             return false;
+163         }
+164         Matcher m = NICKNAME_PATTERN.matcher(nickname);
+165         return m.matches();
+166     }
+167 
+168     /**
+169      * 验证密码格式是否有效.
+170      *
+171      * @param password 要验证的密码
+172      * @return 是否正确密码格式
+173      */
+174     public static boolean validatePassword(String password) {
+175         if (StringUtils.isEmpty(password)) {
+176             return false;
+177         }
+178         Matcher m = PASSWORD_PATTERN.matcher(password);
+179         return m.matches();
+180     }
+181 
+182     /**
+183      * 验证区号是否有效.
+184      *
+185      * @param code 要验证的区号
+186      * @return 是否正确身份证
+187      */
+188     public static boolean validateCode(String code) {
+189         if (StringUtils.isEmpty(code)) {
+190             return false;
+191         }
+192         Matcher m = CODE_PATTERN.matcher(code);
+193         return m.matches();
+194     }
+195 
+196     /**
+197      * 验证邮政编码是否有效.
+198      *
+199      * @param postcode 要验证的邮政编码
+200      * @return 是否正确邮政编码
+201      */
+202     public static boolean validatePostcode(String postcode) {
+203         if (StringUtils.isEmpty(postcode)) {
+204             return false;
+205         }
+206         Matcher m = POSTCODE_PATTERN.matcher(postcode);
+207         return m.matches();
+208     }
+209 
+210     /**
+211      * 验证银行卡是否有效.
+212      *
+213      * @param bankCardNumber 要验证的银行卡号
+214      * @return 是否正确银行卡号
+215      */
+216     public static boolean validateBankCardNumber(String bankCardNumber) {
+217         if (StringUtils.isEmpty(bankCardNumber)) {
+218             return false;
+219         }
+220         Matcher m = BANK_CARD_PATTERN.matcher(bankCardNumber);
+221         return m.matches();
+222     }
+223 
+224     /**
+225      * 获取客户端IP地址.
+226      *
+227      * @param request request请求
+228      * @return ip地址
+229      */
+230     public static String getIpAddr(HttpServletRequest request) {
+231         String ip = request.getHeader("Cdn-Src-Ip");
+232         if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+233             ip = request.getHeader("X-Forwarded-For");
+234         }
+235         if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+236             ip = request.getRemoteAddr();
+237         }
+238         if (StringUtils.hasText(ip)) {
+239             return StringUtils.tokenizeToStringArray(ip, ",")[0];
+240         }
+241         return "";
+242     }
+243 
+244     /**
+245      * 获取当前系统时间,以java.sql.Timestamp类型返回.
+246      *
+247      * @return 当前时间
+248      */
+249     public static Timestamp getTimestamp() {
+250         Timestamp d = new Timestamp(System.currentTimeMillis());
+251         return d;
+252     }
+253 
+254     /**
+255      * 生成32位编码,不含横线
+256      *
+257      * @return uuid串
+258      */
+259     public static String getUUID() {
+260         String uuid = UUID.randomUUID().toString().trim().replaceAll("-", "");
+261         return uuid.toUpperCase();
+262     }
+263 
+264     /**
+265      * 生成MD5编码
+266      *
+267      * @param data 要编码的字符串
+268      * @return 加密后的字符串
+269      */
+270     public static String md5(String data) {
+271         return md5(data, 1);
+272     }
+273 
+274 
+275     /**
+276      * 生成MD5编码
+277      *
+278      * @param data 要编码的字符串
+279      * @param time 加密次数
+280      * @return 加密后的字符串
+281      */
+282     public static String md5(String data, int time) {
+283         byte[] bytes = data == null ? new byte[0] : data.getBytes(Constants.UTF8);
+284 
+285         while (time-- > 1) {
+286             bytes = DigestUtils.md5Digest(bytes);
+287         }
+288 
+289         return DigestUtils.md5DigestAsHex(bytes).toUpperCase();
+290     }
+291 
+292     /**
+293      * 空字符串转为null
+294      *
+295      * @param object 要规则化的对象
+296      * @param <T>    对象类型
+297      * @return 规则化后的对象
+298      */
+299     public static <T> T normalizeBlankStringFields(T object) {
+300         if (object == null) return null;
+301 
+302         PropertyUtilsBean utils = BeanUtilsBean.getInstance().getPropertyUtils();
+303         Stream.of(utils.getPropertyDescriptors(object)).forEach(pd -> {
+304             try {
+305                 Object value = utils.getNestedProperty(object, pd.getName());
+306                 if (value == null) return;
+307 
+308                 if (!StringUtils.hasText(value.toString())) {
+309                     utils.setNestedProperty(object, pd.getName(), null);
+310                 }
+311             } catch (Throwable e) {
+312             }
+313         });
+314 
+315         return object;
+316     }
+317 
+318     /**
+319      * 通过身份证获取性别
+320      *
+321      * @param idNumber 身份证号
+322      * @return 返回性别, 0 保密 , 1 男 2 女
+323      */
+324     public static Integer getGenderByIdNumber(String idNumber) {
+325 
+326         int gender = 0;
+327 
+328         if (idNumber.length() == 15) {
+329             gender = Integer.parseInt(String.valueOf(idNumber.charAt(14))) % 2 == 0 ? 2 : 1;
+330         } else if (idNumber.length() == 18) {
+331             gender = Integer.parseInt(String.valueOf(idNumber.charAt(16))) % 2 == 0 ? 2 : 1;
+332         }
+333 
+334         return gender;
+335 
+336     }
+337 
+338     /**
+339      * 通过身份证获取生日
+340      *
+341      * @param idNumber 身份证号
+342      * @return 返回生日, 格式为 yyyy-MM-dd 的字符串
+343      */
+344     public static String getBirthdayByIdNumber(String idNumber) {
+345 
+346         String birthday = "";
+347 
+348         if (idNumber.length() == 15) {
+349             birthday = "19" + idNumber.substring(6, 8) + "-" + idNumber.substring(8, 10) + "-" + idNumber.substring(10, 12);
+350         } else if (idNumber.length() == 18) {
+351             birthday = idNumber.substring(6, 10) + "-" + idNumber.substring(10, 12) + "-" + idNumber.substring(12, 14);
+352         }
+353 
+354         return birthday;
+355 
+356     }
+357 
+358 
+359     /**
+360      * 通过身份证获取年龄
+361      *
+362      * @param idNumber 身份证号
+363      * @return 返回年龄
+364      */
+365     public static Integer getAgeByIdNumber(String idNumber) {
+366 
+367         String birthString = getBirthdayByIdNumber(idNumber);
+368         if (StringUtils.isEmpty(birthString)) {
+369             return 0;
+370         }
+371 
+372         return getAgeByBirthString(birthString);
+373 
+374     }
+375 
+376     /**
+377      * 通过身份证获取年龄
+378      *
+379      * @param idNumber     身份证号
+380      * @param isNominalAge 是否按元旦算年龄，过了1月1日加一岁 true : 是 false : 否
+381      * @return 返回年龄
+382      */
+383     public static Integer getAgeByIdNumber(String idNumber, boolean isNominalAge) {
+384 
+385         String birthString = getBirthdayByIdNumber(idNumber);
+386         if (StringUtils.isEmpty(birthString)) {
+387             return 0;
+388         }
+389 
+390         return getAgeByBirthString(birthString, isNominalAge);
+391 
+392     }
+393 
+394     /**
+395      * 通过生日日期获取年龄
+396      *
+397      * @param birthDate 生日日期
+398      * @return 返回年龄
+399      */
+400     public static Integer getAgeByBirthDate(Date birthDate) {
+401 
+402         return getAgeByBirthString(new SimpleDateFormat("yyyy-MM-dd").format(birthDate));
+403 
+404     }
+405 
+406 
+407     /**
+408      * 通过生日字符串获取年龄
+409      *
+410      * @param birthString 生日字符串
+411      * @return 返回年龄
+412      */
+413     public static Integer getAgeByBirthString(String birthString) {
+414 
+415         return getAgeByBirthString(birthString, "yyyy-MM-dd");
+416 
+417     }
+418 
+419     /**
+420      * 通过生日字符串获取年龄
+421      *
+422      * @param birthString  生日字符串
+423      * @param isNominalAge 是否按元旦算年龄，过了1月1日加一岁 true : 是 false : 否
+424      * @return 返回年龄
+425      */
+426     public static Integer getAgeByBirthString(String birthString, boolean isNominalAge) {
+427 
+428         return getAgeByBirthString(birthString, "yyyy-MM-dd", isNominalAge);
+429 
+430     }
+431 
+432     /**
+433      * 通过生日字符串获取年龄
+434      *
+435      * @param birthString 生日字符串
+436      * @param format      日期字符串格式,为空则默认"yyyy-MM-dd"
+437      * @return 返回年龄
+438      */
+439     public static Integer getAgeByBirthString(String birthString, String format) {
+440         return getAgeByBirthString(birthString, "yyyy-MM-dd", false);
+441     }
+442 
+443 
+444     /**
+445      * 通过生日字符串获取年龄
+446      *
+447      * @param birthString  生日字符串
+448      * @param format       日期字符串格式,为空则默认"yyyy-MM-dd"
+449      * @param isNominalAge 是否按元旦算年龄，过了1月1日加一岁 true : 是 false : 否
+450      * @return 返回年龄
+451      */
+452     public static Integer getAgeByBirthString(String birthString, String format, boolean isNominalAge) {
+453 
+454         int age = 0;
+455 
+456         if (StringUtils.isEmpty(birthString)) {
+457             return age;
+458         }
+459 
+460         if (StringUtils.isEmpty(format)) {
+461             format = "yyyy-MM-dd";
+462         }
+463 
+464         try {
+465 
+466             Calendar birthday = Calendar.getInstance();
+467             Calendar today = Calendar.getInstance();
+468             SimpleDateFormat sdf = new SimpleDateFormat(format);
+469             birthday.setTime(sdf.parse(birthString));
+470             age = today.get(Calendar.YEAR) - birthday.get(Calendar.YEAR);
+471             if (!isNominalAge) {
+472                 if (today.get(Calendar.MONTH) < birthday.get(Calendar.MONTH) ||
+473                         (today.get(Calendar.MONTH) == birthday.get(Calendar.MONTH) &&
+474                                 today.get(Calendar.DAY_OF_MONTH) < birthday.get(Calendar.DAY_OF_MONTH))) {
+475                     age = age - 1;
+476                 }
+477             }
+478         } catch (ParseException e) {
+479             e.printStackTrace();
+480         }
+481 
+482         return age;
+483 
+484     }
+485 
+486     /**
+487      * 手机号中间四位替换成星号
+488      *
+489      * @param mobile
+490      * @return
+491      */
+492     public static String maskMobile(String mobile) {
+493         if (validateMobile(mobile)) {
+494             return mobile.replaceAll("(\\d{3})\\d{4}(\\d{4})", "$1****$2");
+495         }
+496         return mobile;
+497     }
+498 
+499     /**
+500      * 手机号中间四位自定义替换
+501      *
+502      * @param mobile
+503      * @param transCode 中间四位目标值 如GXJF 将136GXJF1111
+504      * @return
+505      */
+506     public static String maskMobile(String mobile, String transCode) {
+507         if (validateMobile(mobile)) {
+508             transCode = StringUtils.isEmpty(transCode) ? "****" : transCode;
+509             return mobile.replaceAll("(\\d{3})\\d{4}(\\d{4})", String.format("$1%s$2", transCode));
+510         }
+511         return mobile;
+512     }
+513 
+514     /**
+515      * 邮箱地址加星号
+516      *
+517      * @param email
+518      * @return
+519      */
+520     public static String maskEmail(String email) {
+521         if (validateEmail(email)) {
+522             String userName = email.substring(0, email.indexOf("@"));
+523             int len = userName.length();
+524             if (len >= 5) {
+525                 int total = len - 3;
+526                 int half = total / 2;
+527                 int start = half;
+528                 int end = len - half;
+529                 if (total % 2 != 0) {
+530                     end = end - 1;
+531                 }
+532                 StringBuilder sb = new StringBuilder(email);
+533                 for (int i = start; i < end; i++) {
+534                     sb.setCharAt(i, '*');
+535                 }
+536                 return sb.toString();
+537             }
+538         }
+539         return email;
+540     }
+541 
+542     /**
+543      * 账号中间四位自定义替换
+544      *
+545      * @param account
+546      * @return
+547      */
+548     public static String maskTradeAccount(String account) {
+549         return account.replaceAll("(\\d{7})\\d*(\\d{4})", "$1****$2");
+550     }
+551 
+552 
+553     /**
+554      * 读取jsonResult的value中的某个属性值
+555      *
+556      * @param jsonResult
+557      * @param attrName
+558      * @return
+559      */
+560 
+561     public static String readJSONResultValueAttr(JSONResult jsonResult, String attrName) {
+562         String ret = "";
+563         try {
+564             ret = ((JSONObject) jsonResult.getValue()).get(attrName).toString();
+565         } catch (Exception e) {
+566             //e.printStackTrace();
+567         }
+568         return ret;
+569     }
+570 
+571     /**
+572      * 验证是否为日期
+573      *
+574      * @param date
+575      * @return
+576      */
+577     public static boolean validateDate(String date) {
+578         boolean convertSuccess = true;
+579         SimpleDateFormat format = new SimpleDateFormat("yyyy/MM/dd");
+580         try {
+581             format.setLenient(false);
+582             format.parse(date);
+583         } catch (ParseException e) {
+584             convertSuccess = false;
+585         }
+586         return convertSuccess;
+587     }
+588 
+589     /**
+590      * 获取时间戳,作为递增的ID
+591      */
+592     private static final Lock lock = new ReentrantLock();   //锁对象
+593 
+594     public static long getUniqueLong() {
+595         long l;
+596         lock.lock();
+597         try {
+598             l = System.currentTimeMillis();
+599         } finally {
+600             lock.unlock();
+601         }
+602         return l;
+603     }
+604 
+605     /**
+606      * 解析出url参数中的键值对
+607      * 如 "index.jsp?Action=del&id=123"，解析出Action:del,id:123存入map中
+608      *
+609      * @param URL url地址
+610      * @return url请求参数部分
+611      */
+612     public static String getUrlParams(String URL, String key) {
+613         Map<String, String> mapRequest = new HashMap<String, String>();
+614         String[] arrSplit = null;
+615         String strUrlParam = null;
+616         java.net.URL aURL = null;
+617         try {
+618             aURL = new URL(URL);
+619             strUrlParam = aURL.getQuery();
+620         } catch (MalformedURLException e) {
+621             e.printStackTrace();
+622         }
+623         if (strUrlParam == null) {
+624             return "";
+625         }
+626         arrSplit = strUrlParam.split("[&]");
+627         for (String strSplit : arrSplit) {
+628             String[] arrSplitEqual = null;
+629             arrSplitEqual = strSplit.split("[=]");
+630             if (arrSplitEqual.length > 1) {
+631                 mapRequest.put(arrSplitEqual[0], arrSplitEqual[1]);
+632             } else {
+633                 if (!StringUtils.isEmpty(arrSplitEqual[0])) {
+634                     mapRequest.put(arrSplitEqual[0], "");
+635                 }
+636             }
+637         }
+638         if (mapRequest.containsKey(key)) {
+639             try {
+640                 return URLDecoder.decode(mapRequest.get(key), "UTF-8");
+641             } catch (UnsupportedEncodingException e) {
+642                 e.printStackTrace();
+643             } catch (Exception e) {
+644 
+645             }
+646         }
+647         return "";
+648     }
+649 
+650 
+651 
+652     /**
+653      * 生成随机密码
+654      *
+655      * @param pwd_len 生成的密码的总长度
+656      * @return 密码的字符串
+657      */
+658     public static String genRandomNum(int pwd_len) {
+659         // 35是因为数组是从0开始的，26个字母+10个数字
+660         final int maxNum = 36;
+661         int i; // 生成的随机数
+662         int count = 0; // 生成的密码的长度
+663         char[] str = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k',
+664                 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w',
+665                 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+666         StringBuffer pwd = new StringBuffer("");
+667         Random r = new Random();
+668         while (count < pwd_len) {
+669             // 生成随机数，取绝对值，防止生成负数，
+670             i = Math.abs(r.nextInt(maxNum)); // 生成的数最大为36-1
+671             if (i >= 0 && i < str.length) {
+672                 pwd.append(str[i]);
+673                 count++;
+674             }
+675         }
+676         return pwd.toString();
+677     }
+678 
+679 
+680 
+681 }
