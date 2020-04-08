@@ -8,3 +8,6 @@ SpringApplication 则是用于从main方法启动Spring应用的类。
 直接使用main启动该类，SpringBoot便自动化配置了。
 SpringBootApplication：开启组件扫描和自动配置。
 MapperScan: mapper 接口类扫描包配置（@MapperScan("com.pancm.dao")）
+
+
+
